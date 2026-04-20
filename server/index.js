@@ -219,3 +219,11 @@ io.on("connection", (socket) => {
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+// Ping the server every 14 minutes to keep it from sleeping
+const URL = `https://imposter-reactions.onrender.com`; // Replace with your Render URL
+setInterval(() => {
+  http.get(URL, (res) => {
+    console.log(`Self-ping sent. Status: ${res.statusCode}`);
+  });
+}, 840000); // 14 minutes in milliseconds
