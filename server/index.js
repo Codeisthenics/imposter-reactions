@@ -83,45 +83,75 @@ io.on("connection", (socket) => {
     if (!player?.isHost) return;
     if (room.players.length < 4) return socket.emit("error", { message: "Need at least 4 players to start." });
 
-    // 1. 30+ Funny, Weird, and Interesting Themes
-    const themes = [
-      'Cyberpunk', 'Northern Lights', 'Deep Sea', 'Wildlife', 'Crowds',
-      'Funny Cat', 'Interpretive Dance', 'Glitch Art', 'Bizarre', 'Microscopic',
-      'Retro Future', 'Surreal', 'Wobbly', 'Extreme Close Up', 'Food Explosion',
-      'Rubber Duck', 'Slow Motion Water', 'Mannequin', 'Optical Illusion', 'Lava Lamp',
-      'Cactus', 'Space Travel', 'Ancient Ruins', 'Neon City', 'Rollercoaster',
-      'Jellyfish', 'Vaporwave', 'Abstract Motion', 'Robot Dance', 'Parkour',
-      'Trippy', 'Kaleidoscope', 'Funny Dog', 'Macro Insects'
+    // 1. Define Related Pairs [Innocent Theme, Imposter Theme]
+    const relatedPairs = [
+      // Animals (The classic confusion)
+      ['Funny Cat', 'Funny Dog'],
+      ['Panda Eating', 'Human Eating Mukbang'],
+      ['Dancing Bird', 'Interpretive Dance'],
+      ['Monkey Pranks', 'Human Pranks'],
+      ['Cows Grazing', 'Sheep Shorn'],
+
+      // High Energy / Chaos
+      ['Rollercoaster POV', 'Parkour POV'],
+      ['Rock Concert Crowd', 'Angry Mob'],
+      ['Food Explosion', 'Scientific Lab Explosion'],
+      ['Formula 1 Racing', 'Go Kart Racing'],
+      ['Extreme Close Up Insects', 'Alien Landscape'],
+
+      // Weird & Niche
+      ['Clown Party', 'Corporate Meeting'],
+      ['Yoga in Nature', 'Wrestling Match'],
+      ['Slow Motion Water', 'Lava Flowing'],
+      ['Robot Dancing', 'Dad Dancing'],
+      ['Underwater Jellyfish', 'Space Nebula'],
+
+      // Aesthetic / Mood
+      ['Cyberpunk Neon City', 'Christmas Lights'],
+      ['Stormy Ocean', 'Boiling Water'],
+      ['Retro Future 80s', 'Vaporwave Aesthetic'],
+      ['Microscopic Bacteria', 'Glitch Art'],
+      ['Mannequin Challenge', 'Statues in Museum'],
+
+      // Food & Objects
+      ['Pizza Toppings', 'Fruit Salad'],
+      ['Rubber Duck', 'Yellow Canary'],
+      ['Lava Lamp', 'Disco Ball'],
+      ['Spinning Record Player', 'Spinning Pizza'],
+      ['Walking on Moon', 'Walking in Desert']
     ];
-
-    const selectedTheme = themes[Math.floor(Math.random() * themes.length)];
-
-    // 2. Jump to a random page (1-15) to ensure fresh video results
-    const randomPage = Math.floor(Math.random() * 15) + 1;
+    
+    // 2. Pick one pair randomly
+    const selectedPair = relatedPairs[Math.floor(Math.random() * relatedPairs.length)];
+    const innocentSearch = selectedPair[0];
+    const imposterSearch = selectedPair[1];
 
     try {
-      // Fetch 15 videos so we can shuffle them
-      const response = await fetch(
-        `https://api.pexels.com/videos/search?query=${selectedTheme}&per_page=15&page=${randomPage}&min_width=1280`,
-        { headers: { Authorization: PEXELS_API_KEY } }
-      );
-      const data = await response.json();
+      // 3. Fetch from Pexels for BOTH themes
+      const [innocentRes, imposterRes] = await Promise.all([
+        fetch(`https://api.pexels.com/videos/search?query=${innocentSearch}&per_page=10&min_width=1280`, { headers: { Authorization: PEXELS_API_KEY } }),
+        fetch(`https://api.pexels.com/videos/search?query=${imposterSearch}&per_page=10&min_width=1280`, { headers: { Authorization: PEXELS_API_KEY } })
+      ]);
 
-      if (!data.videos || data.videos.length < 5) throw new Error("Not enough variety found");
+      const innocentData = await innocentRes.json();
+      const imposterData = await imposterRes.json();
 
-      // 3. Shuffle the results locally so we aren't always picking the first ones
-      const shuffled = data.videos.sort(() => 0.5 - Math.random());
+      if (!innocentData.videos?.length || !imposterData.videos?.length) throw new Error("API Limit or No Results");
 
-      // Helper to find the best HD link
-      const getBestLink = (v) => v.video_files.find(f => f.quality === 'hd')?.link || v.video_files[0].link;
+      // 4. Helper to get a random HD link from the results
+      const getRandomLink = (data) => {
+        const v = data.videos[Math.floor(Math.random() * data.videos.length)];
+        return v.video_files.find(f => f.quality === 'hd')?.link || v.video_files[0].link;
+      };
 
-      const v1 = getBestLink(shuffled[0]);
-      const v2 = getBestLink(shuffled[1]);
+      const vInnocent = getRandomLink(innocentData);
+      const vImposter = getRandomLink(imposterData);
 
       const imposterIndex = Math.floor(Math.random() * room.players.length);
       room.imposter = room.players[imposterIndex].id;
 
-      room.prompt = { category: selectedTheme };
+      // Use a combined category name for the result screen (e.g., "Animals")
+      room.prompt = { category: `${innocentSearch} vs ${imposterSearch}` };
       room.phase = "prompt";
       room.words = {};
       room.votes = {};
@@ -130,18 +160,17 @@ io.on("connection", (socket) => {
         const isImp = p.id === room.imposter;
         io.to(p.id).emit("game_started", {
           phase: "prompt",
-          // Send a unique clip to the imposter and the other to the group
-          prompt: isImp ? v2 : v1,
-          isImposter: false, // Keep it secret!
-          category: selectedTheme
+          prompt: isImp ? vImposter : vInnocent, // Imposter gets Theme B, Innocents get Theme A
+          isImposter: false,
+          category: "Similar Themes"
         });
       });
 
       broadcastRoom(code);
 
     } catch (err) {
-      console.error("Pexels API Error:", err);
-      socket.emit("error", { message: "Failed to fetch footage. Try again!" });
+      console.error("Pexels Pair Error:", err);
+      socket.emit("error", { message: "Failed to fetch paired footage. Try again!" });
     }
   });
 
