@@ -74,35 +74,53 @@ io.on("connection", (socket) => {
     broadcastRoom(code);
   });
 
-  socket.on("start_game", async () => { // Added 'async' here
+  socket.on("start_game", async () => {
     const code = socket.data.roomCode;
     const room = getRoom(code);
     if (!room) return;
+
     const player = room.players.find((p) => p.id === socket.id);
     if (!player?.isHost) return;
     if (room.players.length < 4) return socket.emit("error", { message: "Need at least 4 players to start." });
 
-    // 1. Pick a random theme for Pexels to search
-    const themes = ['Cooking', 'Nature', 'City Life', 'Animals', 'Cars', 'Space', 'Ocean'];
+    // 1. 30+ Funny, Weird, and Interesting Themes
+    const themes = [
+      'Cyberpunk', 'Northern Lights', 'Deep Sea', 'Wildlife', 'Crowds',
+      'Funny Cat', 'Interpretive Dance', 'Glitch Art', 'Bizarre', 'Microscopic',
+      'Retro Future', 'Surreal', 'Wobbly', 'Extreme Close Up', 'Food Explosion',
+      'Rubber Duck', 'Slow Motion Water', 'Mannequin', 'Optical Illusion', 'Lava Lamp',
+      'Cactus', 'Space Travel', 'Ancient Ruins', 'Neon City', 'Rollercoaster',
+      'Jellyfish', 'Vaporwave', 'Abstract Motion', 'Robot Dance', 'Parkour',
+      'Trippy', 'Kaleidoscope', 'Funny Dog', 'Macro Insects'
+    ];
+
     const selectedTheme = themes[Math.floor(Math.random() * themes.length)];
 
+    // 2. Jump to a random page (1-15) to ensure fresh video results
+    const randomPage = Math.floor(Math.random() * 15) + 1;
+
     try {
-      // 2. Fetch videos from Pexels
-      const response = await fetch(`https://api.pexels.com/videos/search?query=${selectedTheme}&per_page=10&min_width=1280`, {
-        headers: { Authorization: PEXELS_API_KEY }
-      });
+      // Fetch 15 videos so we can shuffle them
+      const response = await fetch(
+        `https://api.pexels.com/videos/search?query=${selectedTheme}&per_page=15&page=${randomPage}&min_width=1280`,
+        { headers: { Authorization: PEXELS_API_KEY } }
+      );
       const data = await response.json();
 
-      if (!data.videos || data.videos.length < 2) throw new Error("Not enough videos");
+      if (!data.videos || data.videos.length < 5) throw new Error("Not enough variety found");
 
-      // 3. Pick two different videos for Innocents vs Imposter
-      const v1 = data.videos[0].video_files.find(f => f.quality === 'hd')?.link || data.videos[0].video_files[0].link;
-      const v2 = data.videos[1].video_files.find(f => f.quality === 'hd')?.link || data.videos[1].video_files[0].link;
+      // 3. Shuffle the results locally so we aren't always picking the first ones
+      const shuffled = data.videos.sort(() => 0.5 - Math.random());
+
+      // Helper to find the best HD link
+      const getBestLink = (v) => v.video_files.find(f => f.quality === 'hd')?.link || v.video_files[0].link;
+
+      const v1 = getBestLink(shuffled[0]);
+      const v2 = getBestLink(shuffled[1]);
 
       const imposterIndex = Math.floor(Math.random() * room.players.length);
       room.imposter = room.players[imposterIndex].id;
 
-      // Store the theme so the result screen shows "The prompt was: Nature"
       room.prompt = { category: selectedTheme };
       room.phase = "prompt";
       room.words = {};
@@ -112,17 +130,18 @@ io.on("connection", (socket) => {
         const isImp = p.id === room.imposter;
         io.to(p.id).emit("game_started", {
           phase: "prompt",
-          // Send the direct .mp4 link
+          // Send a unique clip to the imposter and the other to the group
           prompt: isImp ? v2 : v1,
-          isImposter: false, // Secret Imposter Mode
+          isImposter: false, // Keep it secret!
           category: selectedTheme
         });
       });
+
       broadcastRoom(code);
 
     } catch (err) {
-      console.error("Pexels Error:", err);
-      socket.emit("error", { message: "Failed to load videos. Try again." });
+      console.error("Pexels API Error:", err);
+      socket.emit("error", { message: "Failed to fetch footage. Try again!" });
     }
   });
 
