@@ -14,6 +14,7 @@ const PHASE_LABELS = {
 
 export default function App() {
   const socketRef = useRef(null);
+  const chatLogRef = useRef(null);
   const [screen, setScreen] = useState("home"); // home | game
   const [name, setName] = useState("");
   const [roomCode, setRoomCode] = useState("");
@@ -24,9 +25,12 @@ export default function App() {
   const [phase, setPhase] = useState("lobby");
   const [error, setError] = useState("");
 
+
   // Game state
   const [, setIsImposter] = useState(false);
   const [prompt, setPrompt] = useState(null);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLog, setChatLog] = useState([]);
   const [wordInput, setWordInput] = useState("");
   const [wordSubmitted, setWordSubmitted] = useState(false);
   const [submittedCount, setSubmittedCount] = useState(0);
@@ -34,6 +38,15 @@ export default function App() {
   const [votedFor, setVotedFor] = useState(null);
   const [voteCount, setVoteCount] = useState(0);
   const [result, setResult] = useState(null);
+
+  useEffect(() => {
+    if (chatLogRef.current) {
+      chatLogRef.current.scrollTo({
+        top: chatLogRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+  }, [chatLog]);
 
   useEffect(() => {
     const socket = io(SOCKET_URL);
@@ -54,7 +67,14 @@ export default function App() {
       setIsHost(me?.isHost || false);
     });
 
+    socket.on("receive_chat", (data) => {
+      setChatLog((prev) => [...prev, data]);
+    });
+
+
     socket.on("game_started", ({ phase: ph, prompt: pr, isImposter: imp }) => {
+      setChatLog([]); // Clear old chats for new round
+      // ... rest of your existing game_started code
       setPhase(ph);
       setIsImposter(imp);
       setPrompt(pr);
@@ -132,6 +152,12 @@ export default function App() {
     socketRef.current.emit("submit_word", { word: clean });
     setWordSubmitted(true);
     setError("");
+  };
+
+  const sendChat = () => {
+    if (!chatInput.trim()) return;
+    socketRef.current.emit("send_chat", { message: chatInput });
+    setChatInput("");
   };
 
   const startVoting = () => {
@@ -371,6 +397,30 @@ export default function App() {
             {!isHost && <div className="waiting-pill">Waiting for host to restart...</div>}
           </PhaseCard>
         )}
+
+        {/* Dedicated Chat Area */}
+        {(phase === "reveal" || phase === "voting" || phase === "result") && (
+          <div className="chat-container">
+            <div className="chat-log" ref={chatLogRef}>
+              {chatLog.map((msg, i) => (
+                <div key={i} className="chat-msg">
+                  <strong>{msg.sender}:</strong> {msg.message}
+                </div>
+              ))}
+            </div>
+            <div className="chat-input-row">
+              <input
+                className="input chat-input"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && sendChat()}
+                placeholder="Type to gaslight..."
+                autoFocus
+              />
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );

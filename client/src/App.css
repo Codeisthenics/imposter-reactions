@@ -578,3 +578,70 @@ body {
   text-shadow: 0 0 10px rgba(var(--primary-rgb), 0.3);
 }
 
+/* Dedicated Chat Area */
+.chat-container {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 500px;
+  margin: 20px auto 0 auto;
+  /* Centers the chat and adds top margin */
+}
+
+.chat-log {
+  height: 180px;
+  /* Increased slightly for better "dedicated area" feel */
+  overflow-y: auto;
+  margin-bottom: 12px;
+  padding-right: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* Ensures the chat starts from the bottom if few messages exist */
+  justify-content: flex-end;
+}
+
+/* Custom Scrollbar Styling */
+.chat-log::-webkit-scrollbar {
+  width: 5px;
+}
+
+.chat-log::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-log::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+}
+
+.chat-msg {
+  font-size: 0.9rem;
+  color: #fff;
+  text-align: left;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.chat-msg strong {
+  color: #4ade80;
+  /* Your theme green for names */
+  margin-right: 8px;
+}
+
+.chat-input {
+  flex-grow: 1;
+  background: rgba(0, 0, 0, 0.2) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  outline: none;
+  padding: 8px 12px !important;
+  border-radius: 8px !important;
+}
+
+.chat-input:focus {
+  border-color: #4ade80 !important;
+}

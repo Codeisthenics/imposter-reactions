@@ -198,6 +198,22 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on("send_chat", ({ message }) => {
+    const code = socket.data.roomCode;
+    const room = getRoom(code);
+    if (!room) return;
+
+    const player = room.players.find(p => p.id === socket.id);
+    if (!player) return;
+
+    // Broadcast the message to everyone in the room
+    io.to(code).emit("receive_chat", {
+      sender: player.name,
+      message: message.trim(),
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    });
+  });
+  
   socket.on("start_voting", () => {
     const code = socket.data.roomCode;
     const room = getRoom(code);
