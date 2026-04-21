@@ -25,7 +25,7 @@ export default function App() {
   const [error, setError] = useState("");
 
   // Game state
-  const [isImposter, setIsImposter] = useState(false);
+  const [, setIsImposter] = useState(false);
   const [prompt, setPrompt] = useState(null);
   const [wordInput, setWordInput] = useState("");
   const [wordSubmitted, setWordSubmitted] = useState(false);
