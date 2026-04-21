@@ -41,10 +41,8 @@ export default function App() {
 
   useEffect(() => {
     if (chatLogRef.current) {
-      chatLogRef.current.scrollTo({
-        top: chatLogRef.current.scrollHeight,
-        behavior: 'smooth'
-      });
+      // Use scrollTop instead of scrollTo for more reliable manual override
+      chatLogRef.current.scrollTop = chatLogRef.current.scrollHeight;
     }
   }, [chatLog]);
 

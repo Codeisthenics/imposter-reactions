@@ -594,20 +594,19 @@ body {
 
 .chat-log {
   height: 180px;
-  /* Increased slightly for better "dedicated area" feel */
-  overflow-y: auto;
+  overflow-y: auto; /* Browser handles the scrollbar */
   margin-bottom: 12px;
   padding-right: 8px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  /* Ensures the chat starts from the bottom if few messages exist */
-  justify-content: flex-end;
+  /* REMOVED justify-content: flex-end; */
 }
 
-/* Custom Scrollbar Styling */
-.chat-log::-webkit-scrollbar {
-  width: 5px;
+/* This trick pushes messages to the bottom when there are only a few */
+.chat-log::before {
+  content: "";
+  margin-top: auto;
 }
 
 .chat-log::-webkit-scrollbar-track {
@@ -644,4 +643,31 @@ body {
 
 .chat-input:focus {
   border-color: #4ade80 !important;
+}
+
+/* 1. The background of the scrollbar area (the track) */
+.chat-log::-webkit-scrollbar {
+  width: 6px;
+  /* Keep it thin and sleek */
+}
+
+.chat-log::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+  /* Almost invisible */
+  border-radius: 10px;
+}
+
+/* 2. The draggable part (the thumb) */
+.chat-log::-webkit-scrollbar-thumb {
+  background: rgba(74, 222, 128, 0.2);
+  /* Faded version of your theme green */
+  border-radius: 10px;
+  transition: background 0.3s;
+}
+
+/* 3. Glow effect when you hover over it */
+.chat-log::-webkit-scrollbar-thumb:hover {
+  background: rgba(74, 222, 128, 0.5);
+  /* Brightens when touched */
+  box-shadow: 0 0 5px rgba(74, 222, 128, 0.5);
 }
