@@ -554,3 +554,27 @@ body {
   .logo-main { font-size: 2.1rem; }
 }
 
+/* --- Pexels Video Player Styles --- */
+.prompt-box {
+  border: 1px solid #333;
+  background: #000;
+  border-radius: var(--radius);
+  margin-bottom: 20px;
+}
+
+.prompt-box video {
+  width: 100%;
+  display: block;
+  max-height: 60vh;
+  /* Keeps the video from being too tall on mobile */
+  object-fit: cover;
+  /* Makes the video fill the frame nicely */
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+
+/* Optional: Subtle animation for the Analyze phase */
+.phase-title {
+  color: var(--primary);
+  text-shadow: 0 0 10px rgba(var(--primary-rgb), 0.3);
+}
+

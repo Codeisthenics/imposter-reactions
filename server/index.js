@@ -15,14 +15,9 @@ const io = new Server(server, {
   transports: ['websocket', 'polling'] // Ensures both are supported
 });
 
-const PROMPTS = [
-  "Beach", "Volcano", "Wedding", "Haunted House", "Football",
-  "Jungle", "Space Station", "Pirate Ship", "Library", "Circus",
-  "Hospital", "Ski Resort", "Underwater", "Desert", "Casino",
-  "Kindergarten", "Prison", "Restaurant", "Airport", "Zoo",
-  "Halloween", "Christmas", "Olympics", "Submarine", "Volcano",
-  "Museum", "Pharmacy", "Supermarket", "Skatepark", "Graveyard",
-];
+const PEXELS_API_KEY = 'GlXEgWcUaMC7TvaqUPEYtb21laAdcrIa38TBiBKicsY2OcwFKwAxHZoY';
+
+const VIDEO_PAIRS = [ ];
 
 const rooms = {};
 
@@ -79,7 +74,7 @@ io.on("connection", (socket) => {
     broadcastRoom(code);
   });
 
-  socket.on("start_game", () => {
+  socket.on("start_game", async () => { // Added 'async' here
     const code = socket.data.roomCode;
     const room = getRoom(code);
     if (!room) return;
@@ -87,23 +82,48 @@ io.on("connection", (socket) => {
     if (!player?.isHost) return;
     if (room.players.length < 4) return socket.emit("error", { message: "Need at least 4 players to start." });
 
-    // Assign imposter
-    const imposterIndex = Math.floor(Math.random() * room.players.length);
-    room.imposter = room.players[imposterIndex].id;
-    room.prompt = PROMPTS[Math.floor(Math.random() * PROMPTS.length)];
-    room.phase = "prompt";
-    room.words = {};
-    room.votes = {};
+    // 1. Pick a random theme for Pexels to search
+    const themes = ['Cooking', 'Nature', 'City Life', 'Animals', 'Cars', 'Space', 'Ocean'];
+    const selectedTheme = themes[Math.floor(Math.random() * themes.length)];
 
-    // Send individual roles
-    room.players.forEach((p) => {
-      io.to(p.id).emit("game_started", {
-        phase: "prompt",
-        prompt: p.id === room.imposter ? null : room.prompt,
-        isImposter: p.id === room.imposter,
+    try {
+      // 2. Fetch videos from Pexels
+      const response = await fetch(`https://api.pexels.com/videos/search?query=${selectedTheme}&per_page=10&min_width=1280`, {
+        headers: { Authorization: PEXELS_API_KEY }
       });
-    });
-    broadcastRoom(code);
+      const data = await response.json();
+
+      if (!data.videos || data.videos.length < 2) throw new Error("Not enough videos");
+
+      // 3. Pick two different videos for Innocents vs Imposter
+      const v1 = data.videos[0].video_files.find(f => f.quality === 'hd')?.link || data.videos[0].video_files[0].link;
+      const v2 = data.videos[1].video_files.find(f => f.quality === 'hd')?.link || data.videos[1].video_files[0].link;
+
+      const imposterIndex = Math.floor(Math.random() * room.players.length);
+      room.imposter = room.players[imposterIndex].id;
+
+      // Store the theme so the result screen shows "The prompt was: Nature"
+      room.prompt = { category: selectedTheme };
+      room.phase = "prompt";
+      room.words = {};
+      room.votes = {};
+
+      room.players.forEach((p) => {
+        const isImp = p.id === room.imposter;
+        io.to(p.id).emit("game_started", {
+          phase: "prompt",
+          // Send the direct .mp4 link
+          prompt: isImp ? v2 : v1,
+          isImposter: false, // Secret Imposter Mode
+          category: selectedTheme
+        });
+      });
+      broadcastRoom(code);
+
+    } catch (err) {
+      console.error("Pexels Error:", err);
+      socket.emit("error", { message: "Failed to load videos. Try again." });
+    }
   });
 
   socket.on("submit_word", ({ word }) => {
@@ -165,12 +185,13 @@ io.on("connection", (socket) => {
       const eliminatedName = room.players.find((p) => p.id === eliminated)?.name;
 
       room.phase = "result";
+      // Inside your backend submit_vote check (when all votes are in)
       io.to(code).emit("game_result", {
         imposterCaught,
         imposterName,
         eliminatedName,
-        imposter: room.imposter,
-        prompt: room.prompt,
+        // CHANGE THIS: Add '.category' to send the text name, not the whole object
+        prompt: room.prompt.category,
         voteTally: room.players.map((p) => ({
           name: p.name,
           votes: tally[p.id] || 0,

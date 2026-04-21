@@ -6,7 +6,7 @@ const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || "http://localhost:3001";
 
 const PHASE_LABELS = {
   lobby: "LOBBY",
-  prompt: "DESCRIBE",
+  prompt: "ANALYZE", // Changed from "DESCRIBE"
   reveal: "REVEAL",
   voting: "VOTE",
   result: "RESULT",
@@ -233,18 +233,25 @@ export default function App() {
 
         {/* PROMPT */}
         {phase === "prompt" && (
-          <PhaseCard title={isImposter ? "You are the IMPOSTER" : "Describe this in one word"}>
-            {isImposter ? (
-              <div className="imposter-reveal">
-                <div className="spy-icon">🕵️</div>
-                <p>Blend in. Everyone else has a prompt — you don't.</p>
-                <p>Submit a convincing word to avoid detection.</p>
+          <PhaseCard title="Analyze the Footage">
+            <div className="prompt-box" style={{ padding: '0', overflow: 'hidden', background: '#000' }}>
+              {/* HTML5 Video Player replaces the Iframe */}
+              <video
+                key={prompt} // Forces the player to refresh when the video link changes
+                src={prompt}
+                autoPlay
+                loop
+                playsInline
+                muted={false} // Set to true if you want total silence
+                style={{ width: '100%', display: 'block', borderRadius: 'var(--radius)' }}
+              />
+              <div style={{ padding: '15px', borderTop: '1px solid #333' }}>
+                <span className="room-label">WATCH CLOSELY</span>
+                <p style={{ marginTop: '8px', fontSize: '0.9rem', color: '#888' }}>
+                  One word to describe this clip...
+                </p>
               </div>
-            ) : (
-              <div className="prompt-box">
-                <span className="prompt-word">{prompt}</span>
-              </div>
-            )}
+            </div>
 
             {!wordSubmitted ? (
               <div className="word-input-group">
@@ -259,15 +266,15 @@ export default function App() {
                 />
                 {error && <div className="error-msg">{error}</div>}
                 <button className="btn btn-primary btn-wide" onClick={submitWord}>
-                  Submit Word
+                  Submit Observation
                 </button>
               </div>
             ) : (
               <div className="submitted-state">
-                <div className="check-icon">✓</div>
-                <p>Word submitted!</p>
+                <div className="check-icon" style={{ color: '#4ade80' }}>✓</div>
+                <p>Ready for the reveal</p>
                 <div className="waiting-pill">
-                  {submittedCount}/{players.length} submitted
+                  {submittedCount}/{players.length} players ready
                 </div>
               </div>
             )}
